@@ -1,0 +1,26 @@
+TRABALHO FINAL DE LFA - RECONHECEDOR DE miniPascal COM O ALGORITMO CYK
+UDESC / CCT - Linguagens Formais e Automatos - Prof. Leandro Israel Pinto
+Equipe: Vinicius Moreira Kruger, Gustavo Bada Zanatta e Lucas da Silva
+
+Conteudo
+  Relatorio-LFA.pdf     relatorio final
+  src/                  codigo em C, analisador lexico (flex) e gramatica
+  testes/validos/       3 programas que devem ser aceitos
+  testes/invalidos/     2 programas que devem ser rejeitados
+  testes/rodar_testes.bat
+
+Como usar (Windows, com gcc no PATH)
+  1. src\COMPILAR.bat               compila e gera main.exe
+  2. src\RUN TESTE.bat              reconhece o teste.pas do professor
+  3. src\RUN PASSO A PASSO.bat      mostra todos os passos para o exemplo x: integer;
+  4. testes\rodar_testes.bat        roda os 5 testes
+
+  main.exe [-g] [-p] [-a] arquivo.pas   (rodar de dentro da pasta src)
+    -g  conversao da gramatica para a Forma Normal de Chomsky
+    -p  CYK passo a passo
+    -a  arvore de derivacao
+
+Linux
+  cd src
+  gcc -Wall -O2 -o main main.c gramatica.c cyk.c lex.yy.c
+  ./main -a ../testes/validos/01_teste_professor.pas

@@ -1,0 +1,8 @@
+main.exe
+main
+*.o
+passo_a_passo.txt
+relatorio/*.aux
+relatorio/*.log
+relatorio/*.out
+relatorio/*.toc

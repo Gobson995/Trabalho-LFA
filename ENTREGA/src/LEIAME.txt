@@ -1,0 +1,24 @@
+Arquivos
+  pascal.l        analisador lexico (flex), gera o lex.yy.c
+  lex.yy.c        gerado pelo flex (ja vem pronto)
+  tokens.h        tipos de token
+  gramatica.txt   gramatica livre do contexto do miniPascal
+  gramatica.c     simplificacao da gramatica e Forma Normal de Chomsky
+  cyk.c           algoritmo CYK e arvore de derivacao
+  main.c          programa principal
+  exemplo.pas     exemplo pequeno (x: integer;) para ver o passo a passo
+
+Compilar
+  COMPILAR.bat
+  ou: gcc -Wall -O2 -o main.exe main.c gramatica.c cyk.c lex.yy.c
+
+  So precisa rodar o flex (RUN FLEX.bat) se alterar o pascal.l.
+  No Windows use o win_flex (https://github.com/lexxmark/winflexbison).
+
+Executar (de dentro desta pasta, por causa do gramatica.txt)
+  main.exe [-g] [-p] [-a] arquivo.pas
+    -g  mostra a conversao da gramatica para a FNC
+    -p  mostra o CYK passo a passo
+    -a  mostra a arvore de derivacao
+
+  Retorna 0 se o arquivo for aceito e 1 se for rejeitado.

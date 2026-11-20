@@ -1,0 +1,760 @@
+% Relatorio do trabalho final de LFA - compilar com XeLaTeX ou Tectonic:
+%   tectonic relatorio.tex      (ou: xelatex relatorio.tex, duas vezes)
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{fontspec}
+\setmainfont{texgyretermes}[
+  Extension = .otf, UprightFont = *-regular, BoldFont = *-bold,
+  ItalicFont = *-italic, BoldItalicFont = *-bolditalic]
+\usepackage{unicode-math}
+\setmathfont{texgyretermes-math.otf}
+\usepackage[brazilian]{babel}
+\usepackage[a4paper,top=3cm,left=3cm,right=2cm,bottom=2cm]{geometry}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[edges]{forest}
+\usepackage[hidelinks]{hyperref}
+
+\onehalfspacing
+\setlength{\emergencystretch}{3em}
+
+% figuras e tabelas: mais espaco por pagina e paginas de figuras alinhadas no topo
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpsep}{12pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+% secoes no estilo ABNT: "1 INTRODUCAO"
+\titleformat{\section}{\normalfont\bfseries}{\thesection}{1em}{\MakeUppercase}
+\titleformat{\subsection}{\normalfont\bfseries}{\thesubsection}{1em}{\MakeUppercase}
+\titlespacing*{\section}{0pt}{18pt}{12pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+% numero da pagina no canto superior direito
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% legendas: "Figura 1 – Titulo" em cima e a fonte embaixo
+\captionsetup{labelsep=endash,font={small},justification=centering,skip=6pt}
+\DeclareCaptionType{quadro}[Quadro][Lista de quadros]
+\captionsetup[quadro]{labelsep=endash,font={small}}
+\newcommand{\fonte}[1][Elaborado pelos autores (2026).]{%
+  \par\vspace{3pt}{\footnotesize Fonte: #1}\par}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  rulecolor=\color{black!40},
+  xleftmargin=4pt, xrightmargin=4pt,
+  aboveskip=4pt, belowskip=2pt,
+  showstringspaces=false,
+  upquote=true
+}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\miniPascal}{miniPascal}
+
+\begin{document}
+
+% ----------------------------------------------------------------------
+% CAPA
+% ----------------------------------------------------------------------
+\begin{titlepage}
+\begin{center}
+\singlespacing
+\textbf{UNIVERSIDADE DO ESTADO DE SANTA CATARINA -- UDESC}\\
+\textbf{CENTRO DE CIÊNCIAS TECNOLÓGICAS -- CCT}\\
+\textbf{DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO}
+
+\vspace{4cm}
+\textbf{VINICIUS MOREIRA KRÜGER}\\
+\textbf{GUSTAVO BADA ZANATTA}\\
+\textbf{LUCAS DA SILVA}
+
+\vspace{4cm}
+\textbf{RECONHECIMENTO DA LINGUAGEM MINIPASCAL COM O ALGORITMO CYK}
+
+\vspace{0.6cm}
+Relatório do trabalho final da disciplina de Linguagens Formais e Autômatos (LFA) -- 2026/2\\[2pt]
+Professor: Leandro Israel Pinto
+
+\vfill
+\textbf{JOINVILLE}\\
+\textbf{2026}
+\end{center}
+\end{titlepage}
+\setcounter{page}{2}
+
+% ----------------------------------------------------------------------
+\section{Introdução}
+% ----------------------------------------------------------------------
+
+Este relatório apresenta o trabalho final da disciplina de Linguagens Formais e Autômatos (LFA),
+feito por Vinicius Moreira Krüger, Gustavo Bada Zanatta e Lucas da Silva, estudantes de Ciência
+da Computação da UDESC, em Joinville, no semestre de 2026/2.
+
+O objetivo do trabalho é desenvolver um programa capaz de reconhecer a linguagem \miniPascal{},
+isto é, dizer se um arquivo de entrada pertence ou não à linguagem, mostrando os passos do
+algoritmo de reconhecimento. O programa foi escrito em C e funciona em duas etapas: a análise
+léxica, feita com a ferramenta \textit{flex}, transforma o texto em uma sequência de
+\textit{tokens}; depois, o algoritmo de Cocke-Younger-Kasami (CYK), visto em aula, decide se
+essa sequência é gerada pela Gramática Livre do Contexto (GLC) do \miniPascal{}.
+
+Para usar o CYK, a gramática precisa estar na Forma Normal de Chomsky (FNC). Por isso o
+programa também implementa os algoritmos de simplificação de gramáticas (exclusão de produções
+vazias, de produções unitárias e de símbolos inúteis) e a conversão para a FNC, e mostra cada
+um desses passos. Todos os testes deram o resultado esperado: os 3 programas válidos foram
+aceitos e os 2 inválidos foram rejeitados.
+
+% ----------------------------------------------------------------------
+\section{A linguagem miniPascal}
+% ----------------------------------------------------------------------
+
+A linguagem foi definida a partir do trecho do enunciado, do arquivo \code{teste.pas} e do
+\code{pascal.l} enviados pelo professor, e completada com as construções do Pascal que esse tipo
+de programa normalmente usa. Um programa \miniPascal{} pode começar com um cabeçalho opcional
+\code{program nome;}, seguido de declarações e, se houver, de um bloco principal
+\code{begin}~\dots~\code{end.}. As declarações podem ser:
+
+\begin{itemize}[nosep]
+  \item variáveis globais, escritas como no enunciado (\code{myglobalvar: real;}) ou dentro de
+        uma seção \code{var}, com uma ou mais variáveis separadas por vírgula (\code{a, b: integer;});
+  \item uma \code{procedure}, com lista de parâmetros separados por \code{;} (cada grupo pode ter
+        vários nomes e ser passado por referência com \code{var}), declarações locais opcionais
+        (seção \code{var} e sub-rotinas aninhadas) e um bloco \code{begin}~\dots~\code{end;};
+  \item uma \code{function}, igual à \code{procedure}, mas com o tipo de retorno depois dos
+        parâmetros. O valor de retorno é atribuído a \code{Result}.
+\end{itemize}
+
+Os tipos são \code{integer}, \code{real}, \code{boolean}, \code{char} e \code{string}. Os
+comandos são a atribuição (\code{:=}), a chamada de procedimento (com ou sem argumentos), o
+\code{if}~\dots~\code{then} com \code{else} opcional, o \code{while}~\dots~\code{do}, o
+\code{for}~\dots~\code{to}/\code{downto}~\dots~\code{do}, o \code{repeat}~\dots~\code{until} e o
+bloco \code{begin}~\dots~\code{end}, que pode ser vazio. As expressões seguem a precedência do
+Pascal: \code{not}; depois \code{* / div mod and}; depois \code{+ - or}; e por último os
+relacionais \code{= <> < > <= >=}. Também há sinal unário, parênteses, chamadas de função,
+números inteiros e reais, textos entre apóstrofos e \code{true}/\code{false}.
+
+Como em Pascal, maiúsculas e minúsculas são iguais (\code{Result} e \code{result} são o mesmo
+identificador), o \code{;} separa comandos (o último antes do \code{end} pode ou não ter
+\code{;}) e há três formas de comentário: \code{\{ \}}, \code{(* *)} e \code{//}. Ficaram de
+fora os tipos estruturados (\code{array}, \code{record}), \code{const}, \code{type},
+\code{case} e \code{goto}.
+
+\subsection{Por que uma gramática livre do contexto}
+
+A linguagem não é regular. Os blocos \code{begin}~\dots~\code{end} podem ser aninhados em
+qualquer profundidade e precisam estar balanceados, o mesmo duplo balanceamento de
+$\{a^n b^n \mid n \ge 0\}$ visto em aula, que nenhum autômato finito reconhece. Já a forma de
+cada \textit{token} (identificador, número, palavra reservada) é regular, e por isso fica a cargo
+do \textit{flex}, que gera um autômato finito determinístico.
+
+Algumas regras de um compilador de verdade, como ``toda variável usada foi declarada'', não são
+livres do contexto: elas são parecidas com a linguagem $\{ww\}$, que só uma gramática sensível ao
+contexto gera. Essas regras são semânticas e ficam fora do reconhecimento. Por exemplo, o
+\code{teste.pas} usa a variável \code{var1} sem declará-la e mesmo assim está sintaticamente
+correto.
+
+\subsection{Gramática}
+
+O Quadro~\ref{q:glc} mostra a GLC $G = (V, T, P, \mathit{Programa})$ usada, do jeito que
+está no arquivo \code{gramatica.txt}. Variáveis começam com letra maiúscula, os terminais são as
+palavras reservadas, os símbolos e os tipos de \textit{token} \code{id}, \code{num\_int},
+\code{num\_real} e \code{texto}, e \code{\&} é a palavra vazia. Ela tem 37 variáveis, 49
+terminais e 92 produções. As produções de \code{ExprSimples}, \code{Termo} e \code{Fator} dão a
+precedência dos operadores.
+
+\begin{quadro}[htbp]
+\caption{GLC do miniPascal (arquivo \code{gramatica.txt})}\label{q:glc}
+\begin{lstlisting}
+Programa       -> Cabecalho Corpo | Corpo
+Cabecalho      -> program id ;
+Corpo          -> ListaDecl | ListaDecl BlocoPrincipal | BlocoPrincipal
+BlocoPrincipal -> begin ListaCmd end .
+ListaDecl      -> Decl | Decl ListaDecl
+Decl           -> DeclVar | SecaoVar | DeclProc | DeclFunc
+DeclVar        -> ListaId : Tipo ;
+ListaId        -> id | id , ListaId
+Tipo           -> integer | real | boolean | char | string
+SecaoVar       -> var ListaVar
+ListaVar       -> DeclVar | DeclVar ListaVar
+DeclProc       -> procedure id Parametros ; DeclLocais Bloco ;
+DeclFunc       -> function id Parametros : Tipo ; DeclLocais Bloco ;
+Parametros     -> ( ListaParam ) | &
+ListaParam     -> Param | Param ; ListaParam
+Param          -> ListaId : Tipo | var ListaId : Tipo
+DeclLocais     -> DeclLocal DeclLocais | &
+DeclLocal      -> SecaoVar | DeclProc | DeclFunc
+Bloco          -> begin ListaCmd end
+ListaCmd       -> Cmd | Cmd ; ListaCmd
+Cmd            -> Atribuicao | Chamada | CmdIf | CmdWhile | CmdFor | CmdRepeat
+                  | Bloco | &
+Atribuicao     -> id := Expr
+Chamada        -> id | id ( ListaExpr )
+CmdIf          -> if Expr then Cmd | if Expr then Cmd else Cmd
+CmdWhile       -> while Expr do Cmd
+CmdFor         -> for id := Expr Direcao Expr do Cmd
+Direcao        -> to | downto
+CmdRepeat      -> repeat ListaCmd until Expr
+Expr           -> ExprSimples | ExprSimples OpRel ExprSimples
+ExprSimples    -> Termo | Sinal Termo | ExprSimples OpAd Termo
+Termo          -> Fator | Termo OpMul Fator
+Fator          -> id | id ( ListaExpr ) | num_int | num_real | texto | true | false
+                  | ( Expr ) | not Fator
+ListaExpr      -> Expr | Expr , ListaExpr
+Sinal          -> + | -
+OpRel          -> = | <> | < | > | <= | >=
+OpAd           -> + | - | or
+OpMul          -> * | / | div | mod | and
+\end{lstlisting}
+\fonte
+\end{quadro}
+
+\subsection{Ambiguidade}
+
+Esta gramática é ambígua, como a gramática de expressões vista em aula. O caso clássico é o
+``\textit{else} pendurado'': em \code{if a > 0 then if b > 0 then x := 1 else x := 2}, o
+\code{else} pode pertencer a qualquer um dos dois \code{if}, e cada leitura tem a sua árvore de
+derivação. Também há ambiguidade nas variáveis globais: em \code{var a: integer; x: real;}, a
+declaração de \code{x} pode fazer parte da seção \code{var} ou ser uma declaração separada, o que
+não muda o significado.
+
+Seria possível escrever uma gramática não ambígua para a mesma linguagem, separando os comandos
+\code{if} com e sem \code{else}, mas ela ficaria maior e mais difícil de ler. Como o CYK funciona
+com qualquer GLC, inclusive ambígua, mantivemos a versão mais simples. Ele só verifica se
+\code{Programa} pertence a $V_{1,n}$; quando existe mais de uma árvore, o programa mostra uma
+delas (Seção~\ref{s:ambiguidade}).
+
+% ----------------------------------------------------------------------
+\section{Escolha do algoritmo}
+% ----------------------------------------------------------------------
+
+Foram vistos em aula três reconhecedores para linguagens livres do contexto. A
+Tabela~\ref{t:algoritmos} resume as diferenças entre eles.
+
+\begin{table}[H]
+\caption{Comparação dos algoritmos de reconhecimento vistos em aula}\label{t:algoritmos}
+\centering\small
+\begin{tabular}{@{}>{\raggedright}p{2.6cm}>{\raggedright}p{3.6cm}>{\raggedright}p{2.6cm}>{\raggedright\arraybackslash}p{4.8cm}@{}}
+\toprule
+Algoritmo & Gramática exigida & Custo & Observação \\
+\midrule
+Autômato com pilha descendente & sem recursão à esquerda & $k^{|w|}$ & não determinístico; simulado com tentativa e erro \\
+CYK & Forma Normal de Chomsky & $|w|^3$ & \textit{bottom-up}; tabela triangular \\
+Earley & qualquer GLC & $|w|^3$ ($|w|^2$ se não ambígua) & \textit{top-down}; conjuntos $D_0 \dots D_n$ \\
+\bottomrule
+\end{tabular}
+\fonte
+\end{table}
+
+Escolhemos o CYK pelos seguintes motivos:
+
+\begin{itemize}[nosep]
+  \item usa o conteúdo das aulas de simplificação e formas normais: a GLC escrita à mão é
+        convertida automaticamente para a FNC, e o programa mostra cada etapa;
+  \item o custo é sempre $O(|w|^3)$, mesmo com a gramática ambígua. O autômato com pilha
+        descendente pode ter custo exponencial e exigiria tirar a recursão à esquerda de
+        \code{ExprSimples} e \code{Termo};
+  \item a tabela triangular $V_{r,s}$ é fácil de mostrar passo a passo, igual ao exemplo dos slides;
+  \item é simples de implementar, apenas três laços aninhados.
+\end{itemize}
+
+O Earley evitaria a conversão para a FNC, mas é mais trabalhoso de implementar e de ilustrar.
+
+% ----------------------------------------------------------------------
+\section{Implementação}
+% ----------------------------------------------------------------------
+
+\subsection{Organização do código}
+
+O trabalho foi feito em C. Na pasta de entrega, \code{src} tem o código e \code{testes} tem os
+programas de teste. Os arquivos enviados pelo professor foram usados como base. Os arquivos de
+\code{src} são:
+
+\begin{itemize}[nosep]
+  \item \code{pascal.l} e \code{tokens.h}: analisador léxico (\textit{flex}). O \code{lex.yy.c} é
+        gerado a partir dele;
+  \item \code{gramatica.txt}: a GLC do Quadro~\ref{q:glc}, lida pelo programa ao iniciar;
+  \item \code{gramatica.c}: leitura da GLC, simplificação e conversão para a FNC;
+  \item \code{cyk.c}: o algoritmo CYK e a árvore de derivação;
+  \item \code{main.c}: lê o arquivo de entrada, chama as etapas e mostra o resultado.
+\end{itemize}
+
+A gramática fica em vetores globais: \code{esq[p]} é a variável do lado esquerdo da produção
+$p$, \code{dir[p]} são os símbolos do lado direito e \code{tam[p]} é a quantidade deles
+(0 para a palavra vazia). Os símbolos são guardados pelo nome em \code{simbolos[]}.
+
+\subsection{Análise léxica}
+
+O \code{pascal.l} do professor foi ampliado. Cada padrão é uma expressão regular, e o
+\textit{flex} junta todos em um único autômato finito determinístico. O léxico devolve só sete
+tipos de \textit{token}: palavra reservada, identificador, número inteiro, número real, texto
+entre apóstrofos, símbolo (\code{:= ; ( ) +} etc.) e erro. Comentários e espaços são ignorados,
+e a opção \code{caseless} faz o autômato ignorar maiúsculas e minúsculas.
+
+No \code{main.c}, cada \textit{token} vira um terminal da gramática: a palavra reservada e o
+símbolo viram eles mesmos (\code{begin}, \code{:=}), e os demais viram \code{id},
+\code{num\_int}, \code{num\_real} ou \code{texto}. Assim, a palavra $w$ que o CYK reconhece é a
+sequência de \textit{tokens}, e não de caracteres: \code{myglobalvar: real;} vira
+$w = $ \code{id : real ;}, com $|w| = 4$. Um caractere que não pertence ao alfabeto, como
+\code{@}, gera o \textit{token} de erro e o arquivo é rejeitado já nesta etapa.
+
+\subsection{Simplificação e Forma Normal de Chomsky}
+
+O programa aplica os algoritmos dos slides na ordem recomendada em ``Simplificações
+Combinadas'': primeiro exclui as produções vazias, depois as produções da forma $A \to B$ e por
+último os símbolos inúteis. Em seguida converte o resultado para a FNC. A Tabela~\ref{t:fnc}
+mostra o tamanho da gramática depois de cada etapa.
+
+\begin{table}[H]
+\caption{Tamanho da gramática em cada etapa da conversão}\label{t:fnc}
+\centering
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Etapa & Variáveis & Terminais & Produções \\
+\midrule
+GLC original              & 37  & 49 & 92 \\
+Sem produções vazias      & 37  & 49 & 108 \\
+Sem produções $A \to B$   & 37  & 49 & 228 \\
+Sem símbolos inúteis      & 28  & 49 & 204 \\
+Forma Normal de Chomsky   & 118 & 49 & 294 \\
+\bottomrule
+\end{tabular}
+\fonte
+\end{table}
+
+Na exclusão das produções vazias, o programa encontra as variáveis que geram a palavra vazia,
+$V_\varepsilon = \{\mathit{ListaCmd},\allowbreak \mathit{Parametros},\allowbreak
+\mathit{DeclLocais},\allowbreak \mathit{Cmd}\}$, e para cada ocorrência delas cria uma versão da
+produção sem ela. Uma das produções novas é a versão sem parâmetros e sem declarações locais:
+\begin{center}\code{DeclProc -> procedure id ; Bloco ;}\end{center}
+Como $\mathit{Programa} \notin V_\varepsilon$, a palavra vazia não pertence à linguagem e nenhuma
+produção $S \to \varepsilon$ é incluída.
+
+Na exclusão das produções unitárias, o programa calcula o fecho de cada variável, por exemplo
+$\textit{FECHO-Expr} = \{\mathit{ExprSimples},\allowbreak \mathit{Termo},\allowbreak
+\mathit{Fator}\}$, e copia as produções das variáveis do fecho. Depois disso, nove variáveis
+(\code{SecaoVar}, \code{DeclProc}, \code{DeclFunc}, \code{Atribuicao}, \code{Chamada},
+\code{CmdIf}, \code{CmdWhile}, \code{CmdFor} e \code{CmdRepeat}) só apareciam em produções
+unitárias, deixam de ser atingíveis a partir de \code{Programa} e são retiradas na etapa de
+símbolos inúteis. É por isso que essa etapa vem por último.
+
+Na conversão para a FNC, cada terminal que aparece em produção de tamanho 2 ou mais ganha uma
+variável própria (23 ao todo), como $T(\mathtt{;}) \to \mathtt{;}$, e as produções de tamanho 3
+ou mais são quebradas em cascata, começando pelo fim:
+\begin{gather*}
+\mathit{DeclVar} \to \mathit{ListaId}\, T(\mathtt{:})\, \mathit{Tipo}\, T(\mathtt{;})
+\\
+\Downarrow
+\\
+C_4 \to \mathit{Tipo}\, T(\mathtt{;}),\qquad C_5 \to T(\mathtt{:})\, C_4,\qquad
+\mathit{DeclVar} \to \mathit{ListaId}\, C_5
+\end{gather*}
+Antes de criar uma variável $C_i$, o programa procura se já existe uma com a mesma produção e,
+se existir, reaproveita. Com isso a FNC ficou com 67 variáveis de cascata em vez de 370. Ao
+final, todas as 294 produções têm a forma $A \to BC$ ou $A \to a$. A saída de cada etapa aparece
+com a opção \code{-g}.
+
+\subsection{Algoritmo CYK}
+
+O CYK foi implementado como no pseudocódigo dos slides (Quadro~\ref{q:cyk}). A célula
+$V_{r,s}$ guarda as variáveis que geram a subpalavra que começa no \textit{token} $r$ e tem
+tamanho $s$. A palavra é aceita se o símbolo inicial \code{Programa} pertence a $V_{1,n}$.
+
+\begin{quadro}[H]
+\caption{Pseudocódigo do CYK implementado em \code{cyk.c}}\label{q:cyk}
+\begin{lstlisting}
+para r de 1 ate n:                      // linha s = 1: producoes A -> a
+    V[r][1] = { A | A -> a_r em P }
+para s de 2 ate n:                      // producoes A -> BC
+    para r de 1 ate n - s + 1:
+        V[r][s] = {}
+        para k de 1 ate s - 1:
+            V[r][s] = V[r][s] U { A | A -> BC em P,
+                                      B em V[r][k] e C em V[r+k][s-k] }
+aceita se Programa pertence a V[1][n]
+\end{lstlisting}
+\fonte
+\end{quadro}
+
+A tabela é um vetor de \code{char} com uma posição para cada célula e cada símbolo: o valor 1
+indica que a variável pertence à célula. O programa também guarda se cada célula tem alguma
+variável. Quando $V_{r,k}$ ou $V_{r+k,s-k}$ está vazia, nenhuma produção pode ser usada e a
+combinação $(s, r, k)$ é pulada. O programa conta as combinações visitadas, quantas delas
+tinham as duas células preenchidas, e mede o tempo do CYK.
+
+Se a palavra for aceita, a árvore de derivação é reconstruída a partir da tabela. Partindo de
+\code{Programa} em $V_{1,n}$, procura-se um $k$ e uma produção $A \to BC$ com $B \in V_{r,k}$ e
+$C \in V_{r+k,s-k}$, e repete-se o processo nos dois filhos. Na impressão, as variáveis criadas
+na FNC ($T(a)$ e $C_i$) são omitidas, e a árvore fica parecida com a da gramática original.
+
+% ----------------------------------------------------------------------
+\section{Compilação e execução}
+% ----------------------------------------------------------------------
+
+O programa é compilado pela linha de comando, dentro da pasta \code{src}. No Windows, os
+arquivos \code{COMPILAR.bat} e \code{RUN FLEX.bat} executam esses comandos:
+
+\begin{lstlisting}[frame=none]
+flex -o lex.yy.c pascal.l      (so se o pascal.l for alterado)
+gcc -Wall -O2 -o main main.c gramatica.c cyk.c lex.yy.c
+./main [opcoes] arquivo.pas
+\end{lstlisting}
+
+O código compila sem avisos no GCC 15 (MinGW, Windows) e no GCC 14 (Linux). Sem opções, o
+programa mostra a lista de \textit{tokens}, o resumo do CYK e o resultado. As opções da
+Tabela~\ref{t:opcoes} mostram os outros passos. O código de saída é 0 quando o arquivo é aceito
+e 1 quando é rejeitado.
+
+\begin{table}[H]
+\caption{Opções do programa}\label{t:opcoes}
+\centering
+\begin{tabular}{@{}cl@{}}
+\toprule
+Opção & O que mostra \\
+\midrule
+\code{-g} & cada etapa da simplificação e da conversão para a FNC \\
+\code{-p} & o CYK passo a passo: cada célula, com os valores de $s$, $r$ e $k$ \\
+\code{-a} & a árvore de derivação \\
+\bottomrule
+\end{tabular}
+\fonte
+\end{table}
+
+% ----------------------------------------------------------------------
+\section{Ilustração do reconhecimento}
+% ----------------------------------------------------------------------
+
+\subsection{Exemplo passo a passo}
+
+Para mostrar o funcionamento do CYK com uma tabela que cabe na página, usamos o menor programa
+possível, \code{x: integer;} (arquivo \code{src/exemplo.pas}), que vira a palavra
+$w = $ \code{id : integer ;} com $n = 4$. A Figura~\ref{f:tabela} mostra a tabela gerada pelo
+programa com a opção \code{-p}, no mesmo formato dos slides.
+
+\begin{figure}[htbp]
+\caption{Tabela do CYK para \code{x: integer;}}\label{f:tabela}
+\centering\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{r|>{\centering\arraybackslash}p{3.4cm}|>{\centering\arraybackslash}p{2.1cm}|>{\centering\arraybackslash}p{2.1cm}|>{\centering\arraybackslash}p{2.1cm}|}
+\cline{2-2}
+$s=4$ & Programa, Corpo, ListaDecl, Decl, DeclVar, ListaVar \\
+\cline{2-3}
+$s=3$ & ListaParam, Param, $C_{10}$ & $C_5$ \\
+\cline{2-4}
+$s=2$ & $\emptyset$ & $C_9$ & $C_4$ \\
+\cline{2-5}
+$s=1$ & ListaCmd, ListaId, Cmd, Expr, ListaExpr, ExprSimples, Termo, Fator, $T(\mathtt{id})$ & $T(\mathtt{:})$ & Tipo & ListaCmd, $T(\mathtt{;})$ \\
+\cline{2-5}
+\multicolumn{1}{r}{} & \multicolumn{1}{c}{\code{id}} & \multicolumn{1}{c}{\code{:}} & \multicolumn{1}{c}{\code{integer}} & \multicolumn{1}{c}{\code{;}} \\
+\multicolumn{1}{r}{} & \multicolumn{1}{c}{$r=1$} & \multicolumn{1}{c}{$r=2$} & \multicolumn{1}{c}{$r=3$} & \multicolumn{1}{c}{$r=4$} \\
+\end{tabular}
+\fonte
+\end{figure}
+
+A linha $s=1$ recebe as variáveis com produção $A \to a_r$. O \code{id} aparece em várias
+porque, depois da exclusão das produções unitárias, muitas variáveis passaram a ter a produção
+\code{-> id}: um identificador sozinho pode ser uma expressão (\code{Expr}, \code{Termo},
+\code{Fator}), uma lista de nomes (\code{ListaId}) ou uma chamada de procedimento sem argumentos
+(\code{Cmd}, \code{ListaCmd}). As demais linhas vêm das produções $A \to BC$. O
+Quadro~\ref{q:passos} mostra a saída da opção \code{-p} para as linhas 3 e 4.
+
+\begin{quadro}[htbp]
+\caption{Trecho da saída da opção \code{-p} para \code{x: integer;}}\label{q:passos}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+s=3 r=1 k=1: B em V[1][1] = {ListaCmd, ListaId, Cmd, Expr, ListaExpr, ExprSimples, Termo,
+                            Fator, T(id)}, C em V[2][2] = {C9}
+    Param -> ListaId C9
+    C10 -> ListaId C9
+    ListaParam -> ListaId C9
+s=3 r=1 k=2: B em V[1][2] = {}, C em V[3][1] = {Tipo}
+V[1][3] = {ListaParam, Param, C10}
+
+s=3 r=2 k=1: B em V[2][1] = {T(:)}, C em V[3][2] = {C4}
+    C5 -> T(:) C4
+s=3 r=2 k=2: B em V[2][2] = {C9}, C em V[4][1] = {ListaCmd, T(;)}
+V[2][3] = {C5}
+
+s=4 r=1 k=1: B em V[1][1] = {ListaCmd, ListaId, Cmd, Expr, ListaExpr, ExprSimples, Termo,
+                            Fator, T(id)}, C em V[2][3] = {C5}
+    DeclVar -> ListaId C5
+    Programa -> ListaId C5
+    Corpo -> ListaId C5
+    ListaDecl -> ListaId C5
+    Decl -> ListaId C5
+    ListaVar -> ListaId C5
+s=4 r=1 k=2: B em V[1][2] = {}, C em V[3][2] = {C4}
+s=4 r=1 k=3: B em V[1][3] = {ListaParam, Param, C10}, C em V[4][1] = {ListaCmd, T(;)}
+V[1][4] = {Programa, Corpo, ListaDecl, Decl, DeclVar, ListaVar}
+
+4 tokens, 10 combinacoes (s, r, k), 8 com as duas celulas preenchidas, 0.0 ms
+ACEITA: Programa pertence a V[1][4]
+\end{lstlisting}
+\fonte
+\end{quadro}
+
+Como \code{Programa} está em $V_{1,4}$, a palavra é aceita. A Figura~\ref{f:arvores} mostra a
+árvore de derivação na FNC, reconstruída a partir da tabela, e a mesma árvore como o programa
+a imprime, sem as variáveis auxiliares.
+
+\begin{figure}[htbp]
+\caption{Árvore de derivação de \code{x: integer;} na FNC e sem as variáveis auxiliares}\label{f:arvores}
+\centering\small
+\begin{forest}
+for tree={font=\small, l sep=8pt, s sep=6pt, inner sep=1pt}
+[Programa
+  [ListaId [\code{id}]]
+  [{$C_5$}
+    [{$T(\mathtt{:})$} [\code{:}]]
+    [{$C_4$}
+      [Tipo [\code{integer}]]
+      [{$T(\mathtt{;})$} [\code{;}]]]]]
+\end{forest}
+\hspace{1.8cm}
+\begin{forest}
+for tree={font=\small, l sep=8pt, s sep=10pt, inner sep=1pt}
+[Programa
+  [ListaId [\code{id}]]
+  [\code{:}]
+  [Tipo [\code{integer}]]
+  [\code{;}]]
+\end{forest}
+\fonte
+\end{figure}
+
+\subsection{Programas do enunciado e do professor}
+
+O trecho do enunciado (81 \textit{tokens}) e o \code{teste.pas} do professor (72
+\textit{tokens}) foram aceitos. No \code{teste.pas}, o CYK visita 62.196 combinações
+$(s, r, k)$, mas só 481 delas (0,8\%) têm as duas células preenchidas, porque a maioria das
+subpalavras não é gerada por nenhuma variável. O Quadro~\ref{q:arvore} mostra a parte da árvore
+de derivação, impressa com a opção \code{-a}, que corresponde à função \code{soma} do
+\code{teste.pas}.
+
+\begin{quadro}[htbp]
+\caption{Árvore de derivação da função \code{soma} do \code{teste.pas} (opção \code{-a})}\label{q:arvore}
+\begin{lstlisting}
+  ListaDecl
+    function
+    id  soma
+    Parametros
+      (
+      ListaParam
+        Param
+          ListaId
+            id  a
+          :
+          Tipo
+            integer
+        ;
+        ListaParam
+          ListaId
+            id  b
+          :
+          Tipo
+            integer
+      )
+    :
+    Tipo
+      integer
+    ;
+    Bloco
+      begin
+      ListaCmd
+        Cmd
+          id  Result
+          :=
+          Expr
+            ExprSimples
+              id  a
+            OpAd
+              +
+            Termo
+              id  b
+        ;
+      end
+    ;
+\end{lstlisting}
+\fonte
+\end{quadro}
+
+\subsection{Entrada ambígua}\label{s:ambiguidade}
+
+O terceiro teste válido (\code{03\_programa\_completo.pas}) tem o comando
+\code{if k mod 2 = 0 then if k > 10 then total := total - 1 else total := total + 1}, que é um
+caso de \textit{else} pendurado. O programa aceita a entrada e, na árvore impressa, o
+\code{else} fica ligado ao \code{if} mais próximo, que é a regra do Pascal. Isso acontece porque
+a reconstrução da árvore pega a primeira divisão $k$ que funciona; o CYK em si não escolhe entre
+as leituras, ele só decide se a palavra pertence à linguagem.
+
+% ----------------------------------------------------------------------
+\section{Testes e resultados}\label{s:testes}
+% ----------------------------------------------------------------------
+
+Os testes ficam em \code{testes/validos} e \code{testes/invalidos} e são executados pelo
+\code{rodar\_testes.bat}, que confere se cada programa válido é aceito e cada inválido é
+rejeitado, pelo código de saída do programa. A Tabela~\ref{t:testes} mostra os resultados.
+
+\begin{table}[htbp]
+\caption{Testes}\label{t:testes}
+\centering\small
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{7.2cm}rl@{}}
+\toprule
+Arquivo & O que testa & $n$ & Resultado \\
+\midrule
+\code{validos/01} & \code{teste.pas} enviado pelo professor & 72 & aceito \\
+\code{validos/02} & trecho do enunciado: variável global, \code{procedure} e \code{function} & 81 & aceito \\
+\code{validos/03} & programa completo: \code{program}, \code{var}, listas com vírgula, parâmetro
+\code{var}, sub-rotina aninhada, \code{if}/\code{else} (com \textit{else} pendurado), \code{for},
+\code{repeat}, chamadas, operadores lógicos, textos e bloco principal \code{end.} & 232 & aceito \\
+\code{invalidos/01} & \code{begin} sem o \code{end} correspondente & 29 & rejeitado (sintaxe) \\
+\code{invalidos/02} & caractere \code{@}, que não pertence ao alfabeto & -- & rejeitado (léxico) \\
+\bottomrule
+\end{tabular}
+\fonte
+\end{table}
+
+Os 5 testes deram o resultado esperado. O \code{invalidos/01} mostra o motivo de a linguagem
+precisar de uma gramática livre do contexto: o erro só aparece porque o número de \code{begin} e
+de \code{end} não bate. O \code{invalidos/02} é rejeitado antes do CYK, na análise léxica, com a
+mensagem \code{Erro lexico na linha 3: '@' nao pertence a linguagem}.
+
+\subsection{Desempenho}
+
+Para medir o custo do CYK, geramos programas com o \code{teste.pas} repetido de 1 a 14 vezes,
+de 72 até 1.008 \textit{tokens}. A Figura~\ref{f:tempo} mostra o tempo do CYK e a curva
+$a \cdot n^3$ ajustada ao último ponto, e a Tabela~\ref{t:desempenho} mostra alguns valores. As
+medições foram feitas no GCC 14 com \code{-O2}.
+
+\begin{figure}[htbp]
+\caption{Tempo do CYK em função do número de \textit{tokens}}\label{f:tempo}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=12cm, height=6.5cm,
+  xlabel={Número de \textit{tokens} ($n$)}, ylabel={Tempo (ms)},
+  xmin=0, xmax=1050, ymin=0,
+  grid=major, grid style={gray!25},
+  legend pos=north west, legend cell align=left,
+  /pgf/number format/use comma, /pgf/number format/1000 sep={.},
+  tick label style={font=\small}, label style={font=\small}, legend style={font=\small}]
+\addplot[only marks, mark=*, mark size=1.6pt, blue!70!black]
+  table[x=n, y=tempo_ms, col sep=comma] {dados/desempenho.csv};
+\addlegendentry{tempo medido}
+\addplot[red!70!black, thick, dashed, domain=0:1008, samples=60] {2.188e-7*x^3};
+\addlegendentry{$a \cdot n^3$}
+\end{axis}
+\end{tikzpicture}
+\fonte
+\end{figure}
+
+\begin{table}[htbp]
+\caption{Custo do CYK para entradas de tamanho crescente}\label{t:desempenho}
+\centering\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$n$ & Combinações $(s,r,k)$ & Com as duas células preenchidas & Tempo (ms) \\
+\midrule
+72    & 62.196      & 481    & 0,4 \\
+288   & 3.981.264   & 2.193  & 5,4 \\
+504   & 21.337.260  & 4.445  & 27,9 \\
+720   & 62.207.880  & 7.453  & 61,6 \\
+1.008 & 170.698.584 & 13.013 & 224,1 \\
+\bottomrule
+\end{tabular}
+\fonte
+\end{table}
+
+% ----------------------------------------------------------------------
+\section{Discussão dos resultados}
+% ----------------------------------------------------------------------
+
+O programa reconheceu corretamente todos os testes, incluindo o \code{teste.pas} e o exemplo do
+enunciado, e rejeitou os dois programas com erro, um na sintaxe e outro no léxico. Isso indica
+que a simplificação e a conversão para a FNC preservaram a linguagem, como garantem os teoremas
+vistos em aula.
+
+O custo seguiu o esperado. O número de combinações $(s, r, k)$ é exatamente $(n^3 - n)/6$:
+para $n = 72$ são 62.196. Quando $n$ dobra de 504 para 1.008, as combinações são multiplicadas
+por 8,0 e o tempo também por 8,0, que é o $2^3$ de um algoritmo $O(n^3)$, e a curva $a \cdot n^3$
+da Figura~\ref{f:tempo} acompanha os pontos medidos. Já as combinações com as duas células
+preenchidas foram multiplicadas só por 2,9, porque a tabela é quase toda vazia. Como o programa
+pula as combinações com uma célula vazia, o tamanho da gramática pesa pouco, e o que domina o
+custo são os três laços.
+
+Para os programas dos testes o CYK leva poucos milissegundos (4,7 ms no maior, com 232
+\textit{tokens}). Porém, como o custo é cúbico, um programa com 10.000 \textit{tokens} levaria
+em torno de 1.000 vezes o tempo de um com 1.000, ou seja, alguns minutos. É por isso que
+compiladores reais usam linguagens livres do contexto determinísticas, reconhecidas por um
+autômato com pilha determinístico em tempo linear. Para isso a gramática precisaria ser
+reescrita sem ambiguidade (o \textit{else} pendurado, por exemplo), enquanto o CYK funciona com
+qualquer GLC, sem adaptar a gramática à mão.
+
+A conversão para a FNC mais que triplicou a gramática, de 37 para 118 variáveis e de 92 para 294
+produções. A maior parte vem das cascatas, e reaproveitar as variáveis $C_i$ reduziu as
+variáveis de cascata de 370 para 67. Uma consequência da FNC é que a árvore de derivação
+reconstruída tem variáveis que o programador não escreveu. Por isso a impressão omite $T(a)$ e
+$C_i$, e a árvore fica parecida com a da gramática original.
+
+Uma limitação do CYK é que ele só responde se a palavra pertence ou não à linguagem, sem
+apontar o \textit{token} onde está o erro. No \code{invalidos/01}, por exemplo, o programa diz
+apenas que \code{Programa} não pertence a $V_{1,29}$. Um reconhecedor \textit{top-down}, como o
+Earley, saberia o ponto exato em que a entrada deixou de poder ser continuada.
+
+% ----------------------------------------------------------------------
+\section{Considerações finais}
+% ----------------------------------------------------------------------
+
+O trabalho implementou em C um reconhecedor para a linguagem \miniPascal{}, juntando duas classes
+de linguagens vistas na disciplina: a análise léxica é regular e foi feita com um autômato finito
+gerado pelo \textit{flex}, e a sintaxe é livre do contexto e foi reconhecida pelo algoritmo CYK.
+No caminho, foram aplicados os algoritmos de simplificação de gramáticas e a conversão para a
+Forma Normal de Chomsky, todos mostrados passo a passo pelo programa.
+
+Todos os testes tiveram o resultado esperado, e o CYK lidou sem problemas com a ambiguidade da
+gramática. As medições confirmaram o custo $O(n^3)$, rápido para os programas do trabalho, mas
+que mostra por que compiladores preferem gramáticas determinísticas para entradas grandes.
+
+% ----------------------------------------------------------------------
+\section*{REFERÊNCIAS}
+% ----------------------------------------------------------------------
+\begin{flushleft}
+\singlespacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+
+EARLEY, J. An efficient context-free parsing algorithm. \textbf{Communications of the ACM},
+v. 13, n. 2, p. 94--102, 1970.
+
+HOPCROFT, J. E.; ULLMAN, J. D.; MOTWANI, R. \textbf{Introdução à teoria de autômatos,
+linguagens e computação}. Rio de Janeiro: Campus, 2002.
+
+MENEZES, P. F. B. \textbf{Linguagens formais e autômatos}. 4. ed. Porto Alegre: Sagra
+Luzzatto, 2002. (Série Livros Didáticos, n. 3).
+
+PAXSON, V. \textbf{Flex: a fast scanner generator}. Manual do flex, versão 2.6, 2017.
+\end{flushleft}
+
+\end{document}

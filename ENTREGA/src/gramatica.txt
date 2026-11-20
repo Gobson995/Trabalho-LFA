@@ -1,0 +1,43 @@
+Programa       -> Cabecalho Corpo | Corpo
+Cabecalho      -> program id ;
+Corpo          -> ListaDecl | ListaDecl BlocoPrincipal | BlocoPrincipal
+BlocoPrincipal -> begin ListaCmd end .
+ListaDecl      -> Decl | Decl ListaDecl
+Decl           -> DeclVar | SecaoVar | DeclProc | DeclFunc
+
+DeclVar        -> ListaId : Tipo ;
+ListaId        -> id | id , ListaId
+Tipo           -> integer | real | boolean | char | string
+SecaoVar       -> var ListaVar
+ListaVar       -> DeclVar | DeclVar ListaVar
+
+DeclProc       -> procedure id Parametros ; DeclLocais Bloco ;
+DeclFunc       -> function id Parametros : Tipo ; DeclLocais Bloco ;
+Parametros     -> ( ListaParam ) | &
+ListaParam     -> Param | Param ; ListaParam
+Param          -> ListaId : Tipo | var ListaId : Tipo
+DeclLocais     -> DeclLocal DeclLocais | &
+DeclLocal      -> SecaoVar | DeclProc | DeclFunc
+
+Bloco          -> begin ListaCmd end
+ListaCmd       -> Cmd | Cmd ; ListaCmd
+Cmd            -> Atribuicao | Chamada | CmdIf | CmdWhile | CmdFor | CmdRepeat
+                  | Bloco | &
+Atribuicao     -> id := Expr
+Chamada        -> id | id ( ListaExpr )
+CmdIf          -> if Expr then Cmd | if Expr then Cmd else Cmd
+CmdWhile       -> while Expr do Cmd
+CmdFor         -> for id := Expr Direcao Expr do Cmd
+Direcao        -> to | downto
+CmdRepeat      -> repeat ListaCmd until Expr
+
+Expr           -> ExprSimples | ExprSimples OpRel ExprSimples
+ExprSimples    -> Termo | Sinal Termo | ExprSimples OpAd Termo
+Termo          -> Fator | Termo OpMul Fator
+Fator          -> id | id ( ListaExpr ) | num_int | num_real | texto | true | false
+                  | ( Expr ) | not Fator
+ListaExpr      -> Expr | Expr , ListaExpr
+Sinal          -> + | -
+OpRel          -> = | <> | < | > | <= | >=
+OpAd           -> + | - | or
+OpMul          -> * | / | div | mod | and

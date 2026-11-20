@@ -1,0 +1,21 @@
+
+
+Caso você não tenha o compilador GCC:
+Instale codeblocks-13.12mingw-setup.exe a partir de http://www.codeblocks.org/downloads/26
+Isso irá instalar o IDE Code-Blocks e também o GCC para Windows.
+
+
+Instale também o Flex para Windows 
+(para linux, basta procurar no apt-get por flex)
+http://gnuwin32.sourceforge.net/packages/flex.htm, escolha a opção com Setup
+AO INSTALAR, ALTERE A PASTA DE DESTINO PARA C:\GnuWin32, NÃO INSTALE NA PASTA "ARQUIVOS DE PROGRAMAS" OU "PROGRAM FILES" PORQUE PODE NÃO FUNCIONAR.
+
+Acrescente "C:\GnuWin32" na variável de ambiente "Path" do windows.
+
+Para Compilar
+-------------
+
+Se alterar o arquivo pascal.l, rode o flex sobre ele (RUN FLEX.bat)
+Depois compile normalmente o .c
+
+
